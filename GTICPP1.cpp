@@ -6,13 +6,21 @@ SDL_Window	*w{ nullptr };
 SDL_Surface *s{ nullptr };
 SDL_Surface *h{ nullptr };
 
-SDL_Rect r1{ 0, 0, 100, 100 };
-float speed{ 1.0f };
-std::map<std::string, bool> keyMap{
-	{"up",	  false},
-	{"down",  false},
-	{"left",  false},
-	{"right", false},
+struct gameObject
+{
+	SDL_Rect transform;
+	float		 speed;
+};
+
+struct playerObject : gameObject
+{
+	std::map<std::string, bool> keyMap
+	{
+		{"up",	  false},
+		{"down",  false},
+		{"left",  false},
+		{"right", false},
+	};
 };
 
 void handleInit()
@@ -25,27 +33,31 @@ void handleInit()
 	h = SDL_LoadBMP(imgPath.c_str());
 }
 
-void updateMap(SDL_Event &e, bool val)
+void updateMap(SDL_Event &e, bool val, playerObject &p)
 {
 	switch (e.key.scancode)
 	{
-		case SDL_SCANCODE_W: keyMap["up"]	 = val; break;
-		case SDL_SCANCODE_S: keyMap["down"]  = val; break;
-		case SDL_SCANCODE_A: keyMap["left"]  = val; break;
-		case SDL_SCANCODE_D: keyMap["right"] = val; break;
+		case SDL_SCANCODE_W: p.keyMap["up"]	   = val; break;
+		case SDL_SCANCODE_S: p.keyMap["down"]  = val; break;
+		case SDL_SCANCODE_A: p.keyMap["left"]  = val; break;
+		case SDL_SCANCODE_D: p.keyMap["right"] = val; break;
 	}
 }
 
-void moveObject(SDL_Rect &r)
+void movePlayerObject(playerObject &p)
 {
-	r1.x += keyMap["right"] * speed - keyMap["left"] * speed;
-	r1.y -= keyMap["up"]	* speed - keyMap["down"] * speed;
+	p.transform.x += p.keyMap["right"] * p.speed - p.keyMap["left"] * p.speed;
+	p.transform.y -= p.keyMap["up"]	   * p.speed - p.keyMap["down"] * p.speed;
 }
 
 
 int main(int argc, char* argv[])
 { 
 	handleInit();
+
+	playerObject player;
+	player.transform = { 0, 0, 100, 100 };
+	player.speed = 1.0f;
 
 	bool running{ true };
 	SDL_Event e;
@@ -54,15 +66,36 @@ int main(int argc, char* argv[])
 	{
 		while (SDL_PollEvent(&e))
 		{
-			if		(e.type == SDL_EVENT_QUIT)		running = false;
-			else if (e.type == SDL_EVENT_KEY_DOWN)	updateMap(e, true);
-			else if (e.type == SDL_EVENT_KEY_UP)	updateMap(e, false);
+			if (e.type == SDL_EVENT_QUIT)		running = false;
+			else if (e.type == SDL_EVENT_KEY_DOWN)	updateMap(e, true, player);
+			else if (e.type == SDL_EVENT_KEY_UP)
+			{
+				updateMap(e, false, player);
+				switch (e.key.scancode)
+				{
+					case SDL_SCANCODE_F: 
+						std::cout << "foi";
+						gameObject *ngo = new gameObject;
+						ngo -> transform = { SDL_rand(1366), SDL_rand(768), 10, 10 };
+						SDL_FillSurfaceRect(s, &ngo -> transform, 0xFFFF00);
+						break;
+				}
+			}
+			else if (e.type == SDL_EVENT_MOUSE_BUTTON_DOWN)
+			{
+				switch (e.button.button)
+				{
+					case SDL_BUTTON_LEFT:  player.speed += 1.0f; break;
+					case SDL_BUTTON_RIGHT: player.speed -= 1.0f; break;
+				}
+			}
+
 		}
 
-		moveObject(r1);
+		movePlayerObject(player);
 
 		SDL_FillSurfaceRect(s, nullptr, 0x000000);
-		SDL_FillSurfaceRect(s, &r1, 0xFFFFFF);
+		SDL_FillSurfaceRect(s, &(player.transform), 0xFFFFFF);
 		SDL_UpdateWindowSurface(w);
 	}
 
